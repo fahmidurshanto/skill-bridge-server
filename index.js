@@ -20,6 +20,9 @@ const client = new MongoClient(uri, {
 app.use(cors());
 app.use(express.json());
 
+// mongodb collections
+const usersCollection = client.db("skillbridge").collection("users");
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -28,6 +31,20 @@ async function run() {
     // server Home route
     app.get("/", (req, res) => {
       res.send("Welcome to Skill Bridge Server API");
+    });
+
+    // users route
+
+    app.get("/users", async (req, res) => {
+      const users = await usersCollection.find().toArray();
+      res.send(users);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
     });
 
     app.listen(port, (req, res) => {
@@ -42,4 +59,6 @@ async function run() {
   } finally {
   }
 }
-run().catch(console.dir);
+run().catch((error) => {
+  console.log(error);
+});
