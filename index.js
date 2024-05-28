@@ -22,6 +22,7 @@ app.use(express.json());
 
 // mongodb collections
 const usersCollection = client.db("skillbridge").collection("users");
+const bannerCollection = client.db("skillbridge").collection("banner");
 
 async function run() {
   try {
@@ -31,6 +32,12 @@ async function run() {
     // server Home route
     app.get("/", (req, res) => {
       res.send("Welcome to Skill Bridge Server API");
+    });
+
+    // banner images api
+    app.get("/banner", async (req, res) => {
+      const banners = await bannerCollection.find().toArray();
+      res.send(banners);
     });
 
     // users route
