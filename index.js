@@ -5,6 +5,7 @@ const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const cookieParser = require("cookie-parser");
 
 // mongodb connection uri
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.DB_PASSWORD}@clustercrud.ctitxen.mongodb.net/?retryWrites=true&w=majority&appName=clusterCrud`;
@@ -18,6 +19,7 @@ const client = new MongoClient(uri, {
   },
 });
 
+// middlewares
 app.use(
   cors({
     origin: ["http://localhost:5173"],
@@ -25,12 +27,38 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
+const logger = async (req, res, next) => {
+  console.log("called", req.hostname, req.originalUrl);
+  next();
+};
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  console.log("Value of token:", token);
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+  jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET, (err, decoded) => {
+    // if token is invalid
+    if (err) {
+      console.log(err);
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+
+    // if token is valid
+    console.log("value of token", decoded);
+    req.user = decoded;
+    next();
+  });
+};
 
 // mongodb collections
 const usersCollection = client.db("skillbridge").collection("users");
 const bannerCollection = client.db("skillbridge").collection("banner");
 const jobsCollection = client.db("skillbridge").collection("jobs");
-
+const allJobsCollection = client.db("skillbridge").collection("allJobs");
+const myJobsCollection = client.db("skillbridge").collection("myJobs");
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -42,7 +70,7 @@ async function run() {
     });
 
     // Authentication api
-    app.post("/jwt", async (req, res) => {
+    app.post("/jwt", logger, async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.JWT_ACCESS_TOKEN_SECRET, {
         expiresIn: "1h",
@@ -64,7 +92,7 @@ async function run() {
 
     // users route
 
-    app.post("/user/:id", (req, res) => {
+    app.post("/user/:id", logger, verifyToken, (req, res) => {
       const id = req.params.id;
       const user = req.body;
       console.log(user);
@@ -118,10 +146,29 @@ async function run() {
     });
 
     app.get("/allJobs", async (req, res) => {
-      const allJobs = await jobsCollection.find().toArray();
+      const allJobs = await allJobsCollection.find().toArray();
       res.send(allJobs);
     });
 
+    app.get("/alljobs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const job = await allJobsCollection.findOne(query);
+      res.send(job);
+    });
+
+    app.get("/myJobs", async (req, res) => {
+      const jobs = await myJobsCollection.find().toArray();
+      console.log(jobs);
+      res.send(jobs);
+    });
+
+    app.post("/myJobs", async (req, res) => {
+      const job = req.body;
+      console.log(job);
+      const result = await myJobsCollection.insertOne(job);
+      res.send(result);
+    });
     /* 
     --------------------------------------------------------------- */
 
