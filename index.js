@@ -59,6 +59,10 @@ const bannerCollection = client.db("skillbridge").collection("banner");
 const jobsCollection = client.db("skillbridge").collection("jobs");
 const allJobsCollection = client.db("skillbridge").collection("allJobs");
 const myJobsCollection = client.db("skillbridge").collection("myJobs");
+const applicationsCollection = client
+  .db("skillbridge")
+  .collection("applications");
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -90,6 +94,34 @@ async function run() {
       res.send(banners);
     });
 
+    // application route
+    app.post("/apply", logger, verifyToken, async (req, res) => {
+      const application = req.body;
+      const { user, jobId } = application;
+      const job = await allJobsCollection.findOne({ _id: new ObjectId(jobId) });
+      if (job.postedBy === user.email) {
+        return res
+          .status(400)
+          .send({ message: "You cannot apply for your own job" });
+      }
+
+      // Check if the deadline has passed
+      if (Date.now() > new Date(job.deadline).getTime()) {
+        return res
+          .status(400)
+          .send({ message: "Application deadline has passed" });
+      }
+
+      const result = await applicationsCollection.insertOne(application);
+      res.send(result);
+    });
+
+    // Fetch applied jobs for a user
+    app.get("/apply", logger, verifyToken, async (req, res) => {
+      const userEmail = req.user.email;
+      const applications = await applicationsCollection.find().toArray();
+      res.send(applications);
+    });
     // users route
 
     app.post("/user/:id", logger, verifyToken, (req, res) => {
