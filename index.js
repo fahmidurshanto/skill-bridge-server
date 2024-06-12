@@ -98,15 +98,16 @@ async function run() {
     app.post("/apply", logger, verifyToken, async (req, res) => {
       const application = req.body;
       const { user, jobId } = application;
+      console.log(jobId);
       const job = await allJobsCollection.findOne({ _id: new ObjectId(jobId) });
-      if (job.postedBy === user.email) {
+      if (job?.postedBy === user.email) {
         return res
           .status(400)
           .send({ message: "You cannot apply for your own job" });
       }
 
       // Check if the deadline has passed
-      if (Date.now() > new Date(job.deadline).getTime()) {
+      if (Date.now() > new Date(job?._id?.deadline).getTime()) {
         return res
           .status(400)
           .send({ message: "Application deadline has passed" });
@@ -147,27 +148,27 @@ async function run() {
     // jobs related api
     // onsite jobs api
     app.get("/on_site_jobs", async (req, res) => {
-      const query = { category: "On Site Job" };
-      const jobs = await jobsCollection.find(query).toArray();
+      const query = { job_category: "On Site Job" };
+      const jobs = await allJobsCollection.find(query).toArray();
       res.send(jobs);
     });
 
     // Remote jobs api
     app.get("/remote_jobs", async (req, res) => {
-      const query = { category: "Remote Job" };
-      const jobs = await jobsCollection.find(query).toArray();
+      const query = { job_category: "Remote Job" };
+      const jobs = await allJobsCollection.find(query).toArray();
       res.send(jobs);
     });
     // Hybrid jobs api
     app.get("/hybrid_jobs", async (req, res) => {
-      const query = { category: "Hybrid" };
-      const jobs = await jobsCollection.find(query).toArray();
+      const query = { job_category: "Hybrid" };
+      const jobs = await allJobsCollection.find(query).toArray();
       res.send(jobs);
     });
     // Part time jobs api
     app.get("/part_time_jobs", async (req, res) => {
-      const query = { category: "Part Time" };
-      const jobs = await jobsCollection.find(query).toArray();
+      const query = { job_category: "Part Time" };
+      const jobs = await allJobsCollection.find(query).toArray();
       res.send(jobs);
     });
 
@@ -201,6 +202,54 @@ async function run() {
       const result = await myJobsCollection.insertOne(job);
       res.send(result);
     });
+
+    app.delete("/myJobs/:id", async (req, res) => {
+      const jobId = req.params.id;
+      try {
+        const result = await myJobsCollection.deleteOne({
+          _id: new ObjectId(jobId),
+        });
+        if (result.deletedCount === 1) {
+          res.send({ message: "Job successfully deleted" });
+        } else {
+          res.status(404).send({ message: "Job not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({
+          message: "An error occurred while trying to delete the job",
+        });
+      }
+    });
+
+    app.get("/myJobs/:id", async (req, res) => {
+      const jobId = req.params.id;
+      const query = { _id: new ObjectId(jobId) };
+      const job = await myJobsCollection.findOne(query);
+      res.send(job);
+    });
+
+    app.put("/myJobs/:id", verifyToken, async (req, res) => {
+      const jobId = req.params.id;
+      const updatedJob = req.body;
+
+      try {
+        const result = await myJobsCollection.updateOne(
+          { _id: new ObjectId(jobId) },
+          { $set: updatedJob }
+        );
+
+        if (result.modifiedCount === 1) {
+          res.send({ success: true, message: "Job updated successfully" });
+        } else {
+          res.status(404).send({ message: "Job not found" });
+        }
+      } catch (error) {
+        console.error("Error updating job:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     /* 
     --------------------------------------------------------------- */
 
