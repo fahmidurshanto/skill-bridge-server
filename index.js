@@ -22,7 +22,10 @@ const client = new MongoClient(uri, {
 // middlewares
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://skill-bridge-6471c.firebaseapp.com",
+    ],
     credentials: true,
   })
 );
