@@ -95,31 +95,20 @@ async function run() {
     });
 
     // application route
-    app.post("/apply", logger, verifyToken, async (req, res) => {
+    app.post("/apply/", async (req, res) => {
       const application = req.body;
       const { user, jobId } = application;
-      console.log(jobId);
-      const job = await allJobsCollection.findOne({ _id: new ObjectId(jobId) });
-      if (job?.postedBy === user.email) {
-        return res
-          .status(400)
-          .send({ message: "You cannot apply for your own job" });
-      }
-
-      // Check if the deadline has passed
-      if (Date.now() > new Date(job?._id?.deadline).getTime()) {
-        return res
-          .status(400)
-          .send({ message: "Application deadline has passed" });
-      }
-
-      const result = await applicationsCollection.insertOne(application);
-      res.send(result);
+      // const query = console.log(application);
+      const applications = await applicationsCollection.insertOne({
+        jobId,
+      });
+      console.log(applications);
+      res.send(application);
     });
 
     // Fetch applied jobs for a user
-    app.get("/apply", logger, verifyToken, async (req, res) => {
-      const userEmail = req.user.email;
+    app.get("/apply", async (req, res) => {
+      const userEmail = req?.user?.email;
       const applications = await applicationsCollection.find().toArray();
       res.send(applications);
     });
